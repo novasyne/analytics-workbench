@@ -1,0 +1,981 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Left Navigation Sidebar -->
+<nav class="sidebar d-flex flex-column align-items-center py-3 bg-dark" style="width: 70px;">
+    <button class="btn btn-outline-primary mb-2" id="btnImport" title="Import Data">
+        <i class="bi bi-file-earmark-arrow-up"></i>
+    </button>
+    <button class="btn btn-outline-secondary mb-2" id="btnLLM" title="AI Assistant" data-bs-toggle="modal"
+        data-bs-target="#llmModal">
+        <i class="bi bi-robot"></i>
+    </button>
+    </button>
+
+    <div class="mt-auto">
+
+        <button class="btn btn-outline-danger" id="btnClearSession" title="Clear Session">
+            <i class="bi bi-trash"></i>
+        </button>
+    </div>
+</nav>
+
+<!-- Left Content Sidebar -->
+<aside class="sidebar d-flex flex-column bg-dark" style="width: 280px;">
+    <!-- Data Browser Header -->
+    <div class="p-3 border-bottom border-secondary">
+        <h6 class="mb-0">
+            <i class="bi bi-folder2-open me-2"></i>
+            Data Browser
+        </h6>
+    </div>
+
+    <!-- Data Info (shown when data is loaded) -->
+    <div id="dataInfoPanel" class="p-3 border-bottom border-secondary d-none">
+        <div class="small text-secondary mb-2">CURRENT DATASET</div>
+        <div class="file-info mb-2" id="currentFileName">No data loaded</div>
+        <div class="d-flex justify-content-between small text-secondary mb-2">
+            <span id="rowCount">0 rows</span>
+            <span id="colCount">0 cols</span>
+        </div>
+        <div class="alert alert-info py-2 px-2 mb-2" style="font-size: 0.75rem;">
+            <i class="bi bi-info-circle me-1"></i>
+            Click items below to show/hide columns
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-primary w-50" id="btnSelectAllColumns">
+                <i class="bi bi-check-all me-1"></i> All
+            </button>
+            <button class="btn btn-sm btn-outline-secondary w-50" id="btnSelectNoneColumns">
+                <i class="bi bi-x-lg me-1"></i> None
+            </button>
+        </div>
+    </div>
+
+    <!-- Biomarker Categories -->
+    <div class="flex-grow-1 overflow-auto p-3" id="biomarkerPanel">
+        <div class="empty-state">
+            <i class="bi bi-inbox"></i>
+            <h6>No Data Loaded</h6>
+            <p class="small text-center">Import a CSV file to begin analysis</p>
+        </div>
+    </div>
+</aside>
+
+<!-- Main Content Area -->
+<main class="d-flex flex-column" style="flex: 1; min-width: 0; overflow: hidden;">
+    <!-- Toolbar -->
+    <div class="toolbar d-flex align-items-center gap-2 p-2 border-bottom border-secondary flex-shrink-0">
+        <div class="input-group input-group-sm" style="max-width: 300px;">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" id="searchBiomarkers" placeholder="Search biomarkers...">
+        </div>
+
+        <div class="ms-auto d-flex gap-2">
+            <button class="btn btn-sm btn-outline-primary" id="btnSummaryStats" disabled>
+                <i class="bi bi-calculator me-1"></i> Summary Stats
+            </button>
+        </div>
+    </div>
+
+
+
+    <!-- Main Content Tabs -->
+    <ul class="nav nav-tabs px-3 pt-2" id="mainTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="welcome-tab" data-bs-toggle="tab" data-bs-target="#welcome"
+                type="button">
+                <i class="bi bi-house me-1"></i> Welcome
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="preview-tab" data-bs-toggle="tab" data-bs-target="#preview" type="button"
+                disabled>
+                <i class="bi bi-table me-1"></i> Data Preview
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="distributions-tab" data-bs-toggle="tab" data-bs-target="#distributions"
+                type="button" disabled>
+                <i class="bi bi-bar-chart me-1"></i> Distributions
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="correlations-tab" data-bs-toggle="tab" data-bs-target="#correlations"
+                type="button" disabled>
+                <i class="bi bi-grid-3x3-gap me-1"></i> Correlations
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="missing-tab" data-bs-toggle="tab" data-bs-target="#missing" type="button"
+                disabled>
+                <i class="bi bi-question-circle me-1"></i> Missing Data
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="compare-tab" data-bs-toggle="tab" data-bs-target="#compare" type="button"
+                disabled>
+                <i class="bi bi-diagram-3 me-1"></i> Compare Groups
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="stats-tests-tab" data-bs-toggle="tab" data-bs-target="#stats-tests"
+                type="button" disabled>
+                <i class="bi bi-calculator-fill me-1"></i> Statistical Tests
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced" type="button"
+                disabled>
+                <i class="bi bi-gear-wide-connected me-1"></i> Advanced
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="multimodal-tab" data-bs-toggle="tab" data-bs-target="#multimodal" type="button"
+                disabled>
+                <i class="bi bi-diagram-3-fill me-1"></i> Multimodal
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content flex-grow-1" id="mainTabContent" style="overflow: hidden; min-height: 0;">
+        <!-- Welcome Tab -->
+        <div class="tab-pane fade show active h-100" id="welcome">
+            <div id="welcomeScreen" class="h-100 d-flex align-items-center justify-content-center">
+                <div class="text-center" style="max-width: 600px;">
+                    <i class="bi bi-graph-up-arrow display-1 mb-4"></i>
+                    <h2 class="mb-3">Analytics Discovery Workbench</h2>
+                    <p class="lead mb-4">
+                        A powerful platform for multimodal biomarker analysis and statistical exploration
+                    </p>
+                    <div class="d-flex gap-3 justify-content-center">
+                        <button class="btn btn-primary btn-lg" id="btnStartImport">
+                            <i class="bi bi-file-earmark-arrow-up me-2"></i>
+                            Import Data
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Preview Tab -->
+        <div class="tab-pane fade h-100" id="preview" style="overflow: hidden;">
+            <div class="h-100 p-3" style="overflow: hidden;">
+                <div class="data-table-container h-100" style="overflow: auto;">
+                    <table class="table table-sm table-hover data-table" id="dataPreviewTable">
+                        <thead></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Distributions Tab -->
+        <div class="tab-pane fade h-100" id="distributions">
+            <div class="h-100 d-flex flex-column">
+                <!-- Distribution Controls -->
+                <div class="p-3 border-bottom border-secondary">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small">Select Biomarker</label>
+                            <select class="form-select form-select-sm" id="distBiomarkerSelect">
+                                <option value="">Choose biomarker...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Plot Type</label>
+                            <select class="form-select form-select-sm" id="distPlotType">
+                                <option value="histogram">Histogram</option>
+                                <option value="box">Box Plot</option>
+                                <option value="violin">Violin Plot</option>
+                                <option value="qq">Q-Q Plot</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Group By</label>
+                            <select class="form-select form-select-sm" id="distGroupBy">
+                                <option value="">None</option>
+                                <option value="Arm">Arm</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-sm btn-primary w-100" id="btnGenerateDist">
+                                <i class="bi bi-bar-chart me-1"></i> Generate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Distribution Chart -->
+                <div class="flex-grow-1 p-3">
+                    <div id="distributionChart" class="h-100"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Correlations Tab -->
+        <div class="tab-pane fade h-100" id="correlations">
+            <div class="h-100 d-flex flex-column">
+                <!-- Correlation Controls -->
+                <div class="p-3 border-bottom border-secondary">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small">Correlation Method</label>
+                            <select class="form-select form-select-sm" id="corrMethod">
+                                <option value="pearson">Pearson</option>
+                                <option value="spearman">Spearman</option>
+                                <option value="kendall">Kendall</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Filter By Category</label>
+                            <select class="form-select form-select-sm" id="corrCategoryFilter">
+                                <option value="">All Biomarkers</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Min |r|</label>
+                            <input type="number" class="form-control form-control-sm" id="corrMinValue" value="0"
+                                min="0" max="1" step="0.1">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-sm btn-primary w-100" id="btnGenerateCorr">
+                                <i class="bi bi-grid-3x3-gap me-1"></i> Generate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Correlation Chart -->
+                <div class="flex-grow-1 p-3">
+                    <div id="correlationChart" class="h-100"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Missing Data Tab -->
+        <div class="tab-pane fade h-100" id="missing">
+            <div class="h-100 d-flex flex-column">
+                <!-- Missing Data Controls -->
+                <div class="p-3 border-bottom border-secondary">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small">View Type</label>
+                            <select class="form-select form-select-sm" id="missingViewType">
+                                <option value="heatmap">Missing Pattern Heatmap</option>
+                                <option value="bars">Missing Counts by Biomarker</option>
+                                <option value="summary">Summary Table</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Threshold (%)</label>
+                            <input type="number" class="form-control form-control-sm" id="missingThreshold" value="0"
+                                min="0" max="100" step="5">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button class="btn btn-sm btn-primary w-100" id="btnGenerateMissing">
+                                <i class="bi bi-question-circle me-1"></i> Analyze
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Missing Data Visualization -->
+                <div class="flex-grow-1 p-3">
+                    <div id="missingDataChart" class="h-100"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Compare Groups Tab -->
+        <div class="tab-pane fade h-100" id="compare">
+            <div class="h-100 d-flex flex-column">
+                <!-- Comparison Controls -->
+                <div class="p-3 border-bottom border-secondary">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small">Select Biomarker</label>
+                            <select class="form-select form-select-sm" id="compareBiomarkerSelect">
+                                <option value="">Choose biomarker...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Group By</label>
+                            <select class="form-select form-select-sm" id="compareGroupBy">
+                                <option value="Arm">Arm</option>
+                                <option value="Subject">Subject</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Plot Type</label>
+                            <select class="form-select form-select-sm" id="comparePlotType">
+                                <option value="box">Box Plot</option>
+                                <option value="violin">Violin Plot</option>
+                                <option value="bar">Bar Chart (Mean ± SD)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-sm btn-primary w-100" id="btnGenerateCompare">
+                                <i class="bi bi-diagram-3 me-1"></i> Compare
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison Chart -->
+                <div class="flex-grow-1 p-3">
+                    <div id="comparisonChart" class="h-100"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistical Tests Tab -->
+        <div class="tab-pane fade h-100" id="stats-tests">
+            <div class="h-100 d-flex flex-column">
+                <!-- Test Controls -->
+                <div class="p-3 border-bottom border-secondary">
+                    <ul class="nav nav-pills mb-3" id="testModeTabs">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#singleTest">
+                                Single Test
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#batchTest">
+                                Batch Tests
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <!-- Single Test Mode -->
+                        <div class="tab-pane fade show active" id="singleTest">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label small">Biomarker</label>
+                                    <select class="form-select form-select-sm" id="testBiomarkerSelect">
+                                        <option value="">Choose...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">Test Type</label>
+                                    <select class="form-select form-select-sm" id="testTypeSelect">
+                                        <optgroup label="Two Groups">
+                                            <option value="ttest_ind">Independent t-test</option>
+                                            <option value="ttest_rel">Paired t-test</option>
+                                            <option value="mannwhitney">Mann-Whitney U</option>
+                                            <option value="wilcoxon">Wilcoxon</option>
+                                        </optgroup>
+                                        <optgroup label="Multiple Groups">
+                                            <option value="anova">One-way ANOVA</option>
+                                            <option value="kruskal">Kruskal-Wallis</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small">Group By</label>
+                                    <select class="form-select form-select-sm" id="testGroupBy">
+                                        <option value="Arm">Arm</option>
+                                        <option value="Subject">Subject</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small">Correction</label>
+                                    <select class="form-select form-select-sm" id="testCorrection">
+                                        <option value="none">None</option>
+                                        <option value="bonferroni">Bonferroni</option>
+                                        <option value="fdr">FDR (B-H)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <button class="btn btn-sm btn-primary w-100" id="btnRunTest">
+                                        <i class="bi bi-play-fill me-1"></i> Run Test
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Batch Test Mode -->
+                        <div class="tab-pane fade" id="batchTest">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label small">Category Filter</label>
+                                    <select class="form-select form-select-sm" id="batchCategoryFilter">
+                                        <option value="">All Biomarkers</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">Test Type</label>
+                                    <select class="form-select form-select-sm" id="batchTestType">
+                                        <option value="ttest_ind">Independent t-test</option>
+                                        <option value="mannwhitney">Mann-Whitney U</option>
+                                        <option value="anova">One-way ANOVA</option>
+                                        <option value="kruskal">Kruskal-Wallis</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small">Group By</label>
+                                    <select class="form-select form-select-sm" id="batchGroupBy">
+                                        <option value="Arm">Arm</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small">Correction</label>
+                                    <select class="form-select form-select-sm" id="batchCorrection">
+                                        <option value="none">None</option>
+                                        <option value="bonferroni">Bonferroni</option>
+                                        <option value="fdr">FDR (B-H)</option>
+                                        <option value="holm">Holm</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <button class="btn btn-sm btn-primary w-100" id="btnRunBatchTest">
+                                        <i class="bi bi-play-fill me-1"></i> Run Batch
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-secondary">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Batch mode runs tests on up to 50 biomarkers with multiple testing correction
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Area -->
+                <div class="flex-grow-1 overflow-auto p-3" id="testResultsContainer">
+                    <div class="empty-state">
+                        <i class="bi bi-calculator-fill"></i>
+                        <h6>No Tests Run</h6>
+                        <p class="small text-center">Configure and run a statistical test to see results</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Analytics Tab -->
+        <div class="tab-pane fade h-100" id="advanced">
+            <div class="h-100 d-flex flex-column">
+                <!-- Analysis Type Selector -->
+                <div class="p-3 border-bottom border-secondary">
+                    <ul class="nav nav-pills mb-3" id="advancedModeTabs">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#pcaMode">
+                                PCA
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#spectralMode">
+                                Spectral
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#changepointMode">
+                                Changepoints
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#longitudinalMode">
+                                Longitudinal
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <!-- PCA Mode -->
+                        <div class="tab-pane fade show active" id="pcaMode">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label small">Category Filter</label>
+                                    <select class="form-select form-select-sm" id="pcaCategoryFilter">
+                                        <option value="">All Biomarkers</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">Components</label>
+                                    <input type="number" class="form-control form-control-sm" id="pcaComponents"
+                                        value="3" min="2" max="10">
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button class="btn btn-sm btn-primary w-100" id="btnRunPCA">
+                                        <i class="bi bi-diagram-3 me-1"></i> Run PCA
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Spectral Mode -->
+                        <div class="tab-pane fade" id="spectralMode">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small">Variable</label>
+                                    <select class="form-select form-select-sm" id="spectralVariable">
+                                        <option value="">Choose...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">Sampling Rate (Hz)</label>
+                                    <input type="number" class="form-control form-control-sm" id="spectralSamplingRate"
+                                        value="1" step="0.1">
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button class="btn btn-sm btn-primary w-100" id="btnRunSpectral">
+                                        <i class="bi bi-activity me-1"></i> Analyze
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Changepoint Mode -->
+                        <div class="tab-pane fade" id="changepointMode">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small">Variable</label>
+                                    <select class="form-select form-select-sm" id="changepointVariable">
+                                        <option value="">Choose...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">Threshold (SD)</label>
+                                    <input type="number" class="form-control form-control-sm" id="changepointThreshold"
+                                        value="2.0" step="0.1">
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button class="btn btn-sm btn-primary w-100" id="btnRunChangepoint">
+                                        <i class="bi bi-graph-up me-1"></i> Detect
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Longitudinal Mode -->
+                        <div class="tab-pane fade" id="longitudinalMode">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label small">Variable</label>
+                                    <select class="form-select form-select-sm" id="longitudinalVariable">
+                                        <option value="">Choose...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">Time Column</label>
+                                    <select class="form-select form-select-sm" id="longitudinalTimeCol">
+                                        <option value="DateTime">DateTime</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">Group By</label>
+                                    <select class="form-select form-select-sm" id="longitudinalGroupCol">
+                                        <option value="Subject">Subject</option>
+                                        <option value="Arm">Arm</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button class="btn btn-sm btn-primary w-100" id="btnRunLongitudinal">
+                                        <i class="bi bi-arrow-right me-1"></i> Analyze
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Area -->
+                <div class="flex-grow-1 overflow-auto p-3" id="advancedResultsContainer">
+                    <div class="empty-state">
+                        <i class="bi bi-gear-wide-connected"></i>
+                        <h6>No Analysis Run</h6>
+                        <p class="small text-center">Select an advanced analysis method above</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Multimodal Integration Tab -->
+        <div class="tab-pane fade h-100" id="multimodal">
+            <div class="h-100 d-flex flex-column">
+                <!-- Analysis Type Selector -->
+                <div class="p-3 border-bottom border-secondary">
+                    <ul class="nav nav-pills mb-3" id="multimodalModeTabs">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#crossDomainMode">
+                                Cross-Domain
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#normalizeMode">
+                                Normalize
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#compositeMode">
+                                Composite
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <!-- Cross-Domain Mode -->
+                        <div class="tab-pane fade show active" id="crossDomainMode">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label small">Correlation Method</label>
+                                    <select class="form-select form-select-sm" id="crossDomainMethod">
+                                        <option value="pearson">Pearson</option>
+                                        <option value="spearman">Spearman</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">Min |r|</label>
+                                    <input type="number" class="form-control form-control-sm" id="crossDomainMinCorr"
+                                        value="0.3" step="0.1" min="0" max="1">
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button class="btn btn-sm btn-primary w-100" id="btnRunCrossDomain">
+                                        <i class="bi bi-diagram-3 me-1"></i> Analyze
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Normalize Mode -->
+                        <div class="tab-pane fade" id="normalizeMode">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small">Category</label>
+                                    <select class="form-select form-select-sm" id="normalizeCategoryFilter">
+                                        <option value="">All Biomarkers</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">Method</label>
+                                    <select class="form-select form-select-sm" id="normalizeMethod">
+                                        <option value="zscore">Z-score</option>
+                                        <option value="minmax">Min-Max [0,1]</option>
+                                        <option value="robust">Robust (IQR)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button class="btn btn-sm btn-primary w-100" id="btnNormalize">
+                                        <i class="bi bi-sliders me-1"></i> Normalize
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Composite Mode -->
+                        <div class="tab-pane fade" id="compositeMode">
+                            <div class="row g-3 mb-2">
+                                <div class="col-md-3">
+                                    <label class="form-label small">Composite Name</label>
+                                    <input type="text" class="form-control form-control-sm" id="compositeName"
+                                        value="Composite_Score" placeholder="Composite name">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">Category</label>
+                                    <select class="form-select form-select-sm" id="compositeCategoryFilter">
+                                        <option value="">Choose category...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">Method</label>
+                                    <select class="form-select form-select-sm" id="compositeMethod">
+                                        <option value="mean">Mean</option>
+                                        <option value="weighted_sum">Weighted Sum</option>
+                                        <option value="pca">PCA (PC1)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button class="btn btn-sm btn-primary w-100" id="btnCreateComposite">
+                                        <i class="bi bi-plus-circle me-1"></i> Create
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="alert alert-info py-2 px-2 mb-0" style="font-size: 0.75rem;">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Select a category to create a composite score from all biomarkers in that domain
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Area -->
+                <div class="flex-grow-1 overflow-auto p-3" id="multimodalResultsContainer">
+                    <div class="empty-state">
+                        <i class="bi bi-diagram-3-fill"></i>
+                        <h6>No Analysis Run</h6>
+                        <p class="small text-center">Select a multimodal analysis method above</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Tab (kept from Phase 1) -->
+        <div class="tab-pane fade h-100 d-none" id="stats">
+            <div class="h-100 p-3">
+                <div id="statsContent">
+                    <div class="empty-state">
+                        <i class="bi bi-calculator"></i>
+                        <h6>No Statistics Generated</h6>
+                        <p class="small">Click "Summary Stats" to generate descriptive statistics</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Right History Sidebar -->
+<aside class="sidebar d-flex flex-column bg-dark" style="width: 320px;">
+    <!-- History Header -->
+    <div class="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-clock-history me-2"></i>
+            Analysis History
+        </h6>
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary btn-sm" id="btnDownloadHistory" title="Download History">
+                <i class="bi bi-download"></i>
+            </button>
+            <button class="btn btn-outline-danger btn-sm" id="btnClearHistory" title="Clear History">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- History List -->
+    <div class="flex-grow-1 overflow-auto p-2" id="historyListContainer">
+        <div class="empty-state">
+            <i class="bi bi-journal-text"></i>
+            <h6>No History</h6>
+            <p class="small text-center">Your analysis steps will appear here</p>
+        </div>
+    </div>
+</aside>
+
+<div class="modal fade" id="llmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <!-- Header -->
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-robot me-2"></i> AI Assistant
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body d-flex flex-column" style="height: 60vh;">
+
+                <!-- Messages -->
+                <div id="llmMessages" class="flex-grow-1 border rounded p-3 mb-3 bg-dark text-light"
+                    style="overflow-y: auto;">
+                    <div class="text-center text-muted">
+                        <i class="bi bi-robot" style="font-size: 3rem;"></i>
+                        <p class="mt-2">Ask me about your analysis results</p>
+                    </div>
+                </div>
+
+                <!-- Input -->
+                <textarea class="form-control mb-2" id="llmInput" rows="3"
+                    placeholder="Ask about results..."></textarea>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary flex-grow-1" id="btnSendLLM">
+                        <i class="bi bi-send me-1"></i> Ask
+                    </button>
+                    <button class="btn btn-outline-secondary" id="btnClearChat">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+
+                <!-- Status -->
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <i class="bi bi-database me-1"></i>
+                        <span id="llmDocCount">0</span> documents |
+                        <button class="btn btn-link btn-sm p-0" data-bs-toggle="modal" data-bs-target="#knowledgeModal">
+                            Manage
+                        </button>
+                    </small>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<!-- Import Data Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-earmark-arrow-up me-2"></i>
+                    Import Data
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="dropzone text-center p-5 rounded" id="dropzone">
+                    <i class="bi bi-cloud-upload display-1 text-primary mb-3"></i>
+                    <h5>Drop CSV file here</h5>
+                    <p class="text-secondary">or click to browse</p>
+                    <input type="file" id="fileInput" class="d-none" accept=".csv">
+                    <button class="btn btn-primary mt-2" id="btnBrowseFile">
+                        Browse Files
+                    </button>
+                </div>
+
+                <div id="uploadProgress" class="mt-3 d-none">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+                            style="width: 0%"></div>
+                    </div>
+                    <p class="small text-center mt-2 text-secondary">Uploading and processing...</p>
+                </div>
+
+                <div id="uploadResult" class="mt-3 d-none">
+                    <!-- Upload results will be displayed here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Statistics Modal -->
+<div class="modal fade" id="statsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-calculator me-2"></i>
+                    Summary Statistics
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="statsModalContent">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-3 text-secondary">Calculating statistics...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="btnExportStats">
+                    <i class="bi bi-download me-1"></i> Export
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Modal (reusable) -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmModalTitle">Confirm Action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="confirmModalBody">
+                Are you sure you want to proceed?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmModalAction">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Knowledge Base Management Modal -->
+<div class="modal fade" id="knowledgeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-robot me-2"></i>Manage Knowledge Base
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Alert placeholder -->
+                <div id="knowledgeAlertPlaceholder"></div>
+
+                <!-- Document list -->
+                <h6><i class="bi bi-file-earmark-text me-1"></i>Stored Documents</h6>
+                <div class="border rounded p-2 mb-3" style="max-height: 300px; overflow-y: auto;">
+                    <div id="knowledgeSpinner" class="text-center" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <ul class="list-group" id="documentList"></ul>
+                </div>
+
+                <!-- Upload section -->
+                <h6><i class="bi bi-file-earmark-arrow-up me-1"></i>Upload New Files</h6>
+                <div class="input-group mb-3">
+                    <input class="form-control" type="file" id="documentUpload" multiple accept=".pdf">
+                    <button class="btn btn-primary" type="button" id="btnUploadDocs">
+                        <span id="uploadSpinner" class="spinner-border spinner-border-sm me-1"
+                            style="display: none;"></span>
+                        <i id="uploadIcon" class="bi bi-file-earmark-arrow-up me-1"></i>Upload
+                    </button>
+                </div>
+
+                <p class="form-text">
+                    Upload research PDFs, then click "Build" to create searchable knowledge base.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="btnBuildKnowledge">
+                    <span id="buildSpinner" class="spinner-border spinner-border-sm me-1" style="display: none;"></span>
+                    <i id="buildIcon" class="bi bi-bricks me-1"></i>
+                    <span id="buildText">Build Knowledge Base</span>
+                </button>
+                <button type="button" class="btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteDocModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Delete file: <strong id="deleteDocName"></strong>?</p>
+                <p class="text-danger">Rebuild knowledge base after deletion.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="btnConfirmDelete">
+                    <span id="deleteSpinner" class="spinner-border spinner-border-sm me-1"
+                        style="display: none;"></span>
+                    <i class="bi bi-trash me-1"></i>Delete
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

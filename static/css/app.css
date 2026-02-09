@@ -1,0 +1,561 @@
+/* ============================================
+   Layout & Structure
+   ============================================ */
+
+body {
+    overflow: hidden;
+    background-color: #1a1a1a;
+}
+
+#app {
+    min-height: 100vh;
+}
+
+.sidebar {
+    flex-shrink: 0;
+    border-right: 1px solid var(--bs-border-color);
+}
+
+.sidebar:last-child {
+    border-right: none;
+    border-left: 1px solid var(--bs-border-color);
+}
+
+main {
+    background-color: #1e1e1e;
+}
+
+/* ============================================
+   Menu Buttons
+   ============================================ */
+
+nav.sidebar .btn {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+nav.sidebar .btn:disabled {
+    opacity: 0.4;
+}
+
+/* ============================================
+   Welcome Screen
+   ============================================ */
+
+#welcomeScreen {
+    color: var(--bs-secondary-color);
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+
+#welcomeScreen h2 {
+    color: var(--bs-body-color);
+}
+
+/* ============================================
+   Toolbar
+   ============================================ */
+
+.toolbar {
+    min-height: 48px;
+}
+
+.toolbar .input-group-text {
+    background-color: transparent;
+    border-color: var(--bs-border-color);
+    font-size: 0.8rem;
+}
+
+.toolbar .form-control,
+.toolbar .form-select {
+    font-size: 0.85rem;
+}
+
+.file-info {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ============================================
+   Info Bar
+   ============================================ */
+
+.info-bar {
+    font-size: 0.8rem;
+}
+
+.info-bar strong {
+    color: var(--bs-secondary-color);
+}
+
+/* ============================================
+   Biomarker List
+   ============================================ */
+
+.biomarker-list {
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+}
+
+.biomarker-item {
+    display: flex;
+    align-items: center;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    gap: 0.5rem;
+}
+
+.biomarker-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.biomarker-item.selected {
+    background-color: rgba(var(--bs-primary-rgb), 0.2);
+}
+
+.biomarker-item:not(.selected) {
+    opacity: 0.6;
+}
+
+.biomarker-item:not(.selected):hover {
+    opacity: 0.8;
+}
+
+.biomarker-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.biomarker-name {
+    flex-grow: 1;
+    font-size: 0.85rem;
+}
+
+.biomarker-category {
+    font-size: 0.7rem;
+    color: var(--bs-secondary-color);
+    text-transform: uppercase;
+}
+
+/* Biomarker colors by category */
+.biomarker-indicator.eeg {
+    background-color: #3498db;
+}
+
+.biomarker-indicator.hrv {
+    background-color: #e74c3c;
+}
+
+.biomarker-indicator.blood {
+    background-color: #e74c3c;
+}
+
+.biomarker-indicator.saliva {
+    background-color: #f39c12;
+}
+
+.biomarker-indicator.urine {
+    background-color: #f39c12;
+}
+
+.biomarker-indicator.csf {
+    background-color: #9b59b6;
+}
+
+.biomarker-indicator.sweat {
+    background-color: #1abc9c;
+}
+
+.biomarker-indicator.hair {
+    background-color: #16a085;
+}
+
+.biomarker-indicator.scales {
+    background-color: #2ecc71;
+}
+
+.biomarker-indicator.wearable {
+    background-color: #3498db;
+}
+
+.biomarker-indicator.other {
+    background-color: #95a5a6;
+}
+
+/* ============================================
+   History List
+   ============================================ */
+
+#historyListContainer .list-group-item {
+    background-color: transparent;
+    border-color: var(--bs-border-color);
+    padding: 0.5rem 0.75rem;
+}
+
+#historyListContainer .list-group-item:first-child {
+    border-top: none;
+}
+
+.history-step {
+    font-size: 0.85rem;
+}
+
+.history-params {
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+}
+
+.history-time {
+    font-size: 0.7rem;
+    color: var(--bs-secondary-color);
+}
+
+/* ============================================
+   File Upload Dropzone
+   ============================================ */
+
+.dropzone {
+    border: 2px dashed var(--bs-border-color);
+    background-color: var(--bs-tertiary-bg);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.dropzone:hover,
+.dropzone.dragover {
+    border-color: var(--bs-primary);
+    background-color: rgba(var(--bs-primary-rgb), 0.1);
+}
+
+.dropzone.dragover {
+    transform: scale(1.01);
+}
+
+.dropzone i {
+    transition: transform 0.2s ease;
+}
+
+.dropzone:hover i {
+    transform: scale(1.1);
+}
+
+/* ============================================
+   Data Table
+   ============================================ */
+.data-table-container {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+}
+
+.data-table {
+    font-size: 0.85rem;
+    width: auto !important;
+    min-width: 100%;
+}
+
+.data-table thead th {
+    background-color: var(--bs-tertiary-bg);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    padding: 0.75rem 0.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.data-table tbody td {
+    padding: 0.5rem;
+    white-space: nowrap;
+}
+
+/* DataTables overrides */
+.dataTables_wrapper {
+    width: 100% !important;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.dataTables_wrapper .dataTables_scrollHead {
+    flex-shrink: 0;
+    overflow: hidden !important;
+}
+
+.dataTables_wrapper .dataTables_scrollBody {
+    flex: 1 1 auto;
+    overflow: auto !important;
+}
+
+/* Synchronize horizontal scroll between header and body */
+.dataTables_wrapper .dataTables_scroll {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.dataTables_wrapper table {
+    width: auto !important;
+    min-width: 100%;
+}
+
+/* ============================================
+   Tab Navigation
+   ============================================ */
+
+.nav-tabs {
+    border-bottom-color: var(--bs-border-color);
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--bs-secondary-color);
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+}
+
+.nav-tabs .nav-link:hover {
+    border-bottom-color: var(--bs-secondary);
+    color: var(--bs-body-color);
+}
+
+.nav-tabs .nav-link.active {
+    border-bottom-color: var(--bs-primary);
+    color: var(--bs-primary);
+    background-color: transparent;
+}
+
+/* ============================================
+   Progress Bars
+   ============================================ */
+
+.progress {
+    background-color: var(--bs-tertiary-bg);
+    height: 6px;
+}
+
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+/* ============================================
+   Toast Notifications
+   ============================================ */
+
+.toast-container {
+    z-index: 1100;
+}
+
+.toast {
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+}
+
+.toast-header {
+    background-color: var(--bs-tertiary-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+/* ============================================
+   Modal Customization
+   ============================================ */
+
+.modal-content {
+    background-color: var(--bs-body-bg);
+}
+
+.modal-header {
+    border-bottom-color: var(--bs-border-color);
+}
+
+.modal-footer {
+    border-top-color: var(--bs-border-color);
+}
+
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+/* ============================================
+   Cards
+   ============================================ */
+
+.card {
+    background-color: var(--bs-body-bg);
+    border-color: var(--bs-border-color);
+}
+
+.card-header {
+    background-color: var(--bs-tertiary-bg);
+    border-bottom-color: var(--bs-border-color);
+}
+
+/* ============================================
+   Stats Cards
+   ============================================ */
+
+.stat-card {
+    background-color: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.25rem;
+    padding: 1rem;
+    transition: all 0.2s;
+}
+
+.stat-card:hover {
+    background-color: rgba(var(--bs-primary-rgb), 0.05);
+    border-color: var(--bs-primary);
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--bs-primary);
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ============================================
+   Form Controls
+   ============================================ */
+
+.form-check-input:checked {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+.form-switch .form-check-input {
+    cursor: pointer;
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.text-micro {
+    font-size: 0.7rem;
+}
+
+/* ============================================
+   Scrollbar Styling
+   ============================================ */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bs-tertiary-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--bs-secondary-bg);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--bs-secondary);
+}
+
+/* ============================================
+   Loading States
+   ============================================ */
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+/* ============================================
+   Empty States
+   ============================================ */
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    color: var(--bs-secondary-color);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state h5 {
+    color: var(--bs-body-color);
+    margin-bottom: 0.5rem;
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+
+.btn-primary {
+    --bs-btn-bg: #00539f;
+    --bs-btn-border-color: #00539f;
+    --bs-btn-hover-bg: #003d73;
+    --bs-btn-hover-border-color: #003d73;
+}
+
+/* ============================================
+   Responsive Adjustments
+   ============================================ */
+
+@media (max-width: 992px) {
+    nav.sidebar {
+        width: 60px !important;
+    }
+
+    nav.sidebar .btn {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+
+    aside.sidebar {
+        width: 240px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    aside.sidebar {
+        display: none !important;
+    }
+}
