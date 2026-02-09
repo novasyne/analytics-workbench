@@ -13,6 +13,12 @@
     </button>
 
     <div class="mt-auto">
+                    <button class="btn btn-outline-secondary mb-2"
+        data-bs-toggle="modal"
+        data-bs-target="#aboutModal"
+        title="About">
+    <i class="bi bi-info-circle"></i>
+</button>
 
         <button class="btn btn-outline-danger" id="btnClearSession" title="Clear Session">
             <i class="bi bi-trash"></i>
@@ -973,6 +979,64 @@
                     <i class="bi bi-trash me-1"></i>Delete
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- About Modal -->
+<div class="modal fade" id="aboutModal" tabindex="-1" aria-labelledby="aboutModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="aboutModalLabel">
+                    <i class="bi bi-info-circle me-2"></i>About
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body text-center">
+                <img src="{{ url_for('static', filename='img/novasyne_logo.png') }}"
+                     alt="Wearables Workbench"
+                     class="img-fluid rounded mb-3"
+                     style="max-height: 200px;"
+                     onerror="this.style.display='none'">
+
+                <h4>Analytics Workbench</h4>
+                <p class="text-muted">Version 0.1</p>
+
+                <hr>
+
+                <p>
+                    <a href="https://github.com/novasyne/analytics-workbench"
+                       target="_blank"
+                       class="text-decoration-none">
+                        <i class="bi bi-github me-2"></i>github.com/novasyne/analytics-workbench
+                    </a>
+                </p>
+
+                <hr>
+
+                <p class="mb-0">
+                    <a href="https://www.novasyne.com"
+                       target="_blank"
+                       rel="noopener"
+                       class="text-decoration-none d-block">
+                        www.novasyne.com
+                    </a>
+                    <a href="https://studypro.novasyne.com"
+                       target="_blank"
+                       rel="noopener"
+                       class="text-decoration-none d-block">
+                        studypro.novasyne.com
+                    </a>
+                </p>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Close
+                </button>
             </div>
         </div>
     </div>
