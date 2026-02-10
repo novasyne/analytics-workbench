@@ -4,6 +4,14 @@
 
 A comprehensive web-based analytics platform for clinical trial researchers to explore, analyze, and interpret multimodal biomarker data with integrated LLM assistance.
 
+
+> **Author:** Gideon Vos, James Cook University, Australia  
+> **Contact:** [LinkedIn](https://www.linkedin.com/in/gideonvos)  
+> **Released:** January 2026
+
+---
+
+
 ![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
 ![Flask](https://img.shields.io/badge/Flask-3.0-green.svg)
 ![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-purple.svg)
