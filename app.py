@@ -432,7 +432,7 @@ def upload_file():
         return jsonify({
             'success': True,
             'metadata': metadata,
-            'preview': df.head(10).to_dict('records')
+            'preview': df.replace({pd.NA: None, float('nan'): None}).to_dict('records')
         })
         
     except Exception as e:
@@ -581,7 +581,7 @@ def get_data_preview():
         return jsonify({
             'success': True,
             'metadata': metadata,
-            'preview': df.head(20).to_dict('records')
+            'preview': df.head(20).replace({pd.NA: None, float('nan'): None}).to_dict('records'),
         })
         
     except Exception as e:
@@ -804,7 +804,9 @@ def generate_correlation():
         
         # Calculate correlation
         df_subset = df[biomarkers].select_dtypes(include=[np.number])
-        
+        if df_subset.dropna().shape[0] == 0:
+            return jsonify({'error': 'NaN values in data'}), 400
+
         if method == 'pearson':
             corr_matrix = df_subset.corr(method='pearson')
         elif method == 'spearman':
@@ -838,7 +840,10 @@ def generate_correlation():
         
         return jsonify({
             'success': True,
-            'data': result
+            'data': {
+                'biomarkers': biomarkers,
+                'correlation_matrix': corr_matrix.replace({float('nan'): None}).to_dict()
+            }
         })
         
     except Exception as e:
@@ -1765,7 +1770,7 @@ def create_composite():
             'n_features': len(columns),
             'features': columns,
             'weights': weights,
-            'values': [float(v) for v in composite],
+            'values': [float(v) for v in composite if not np.isnan(v)],
             'stats': {
                 'mean': float(composite.mean()),
                 'std': float(composite.std()),
