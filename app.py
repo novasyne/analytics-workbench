@@ -805,7 +805,7 @@ def generate_correlation():
         # Calculate correlation
         df_subset = df[biomarkers].select_dtypes(include=[np.number])
         if df_subset.dropna().shape[0] == 0:
-            return jsonify({'error': 'NaN values in data'}), 400
+            return jsonify({'error': 'No valid data after removing NaN values'}), 400
 
         if method == 'pearson':
             corr_matrix = df_subset.corr(method='pearson')
@@ -820,10 +820,16 @@ def generate_correlation():
         if min_value > 0:
             corr_matrix = corr_matrix.where(np.abs(corr_matrix) >= min_value, np.nan)
         
+        # Replace NaN with None for JSON serialization
+        matrix_list = []
+        for row in corr_matrix.values:
+            clean_row = [None if (isinstance(x, float) and np.isnan(x)) else float(x) for x in row]
+            matrix_list.append(clean_row)
+        
         result = {
             'method': method,
             'biomarkers': corr_matrix.columns.tolist(),
-            'matrix': corr_matrix.values.tolist(),
+            'matrix': matrix_list,
             'n_biomarkers': len(corr_matrix)
         }
         
@@ -840,13 +846,12 @@ def generate_correlation():
         
         return jsonify({
             'success': True,
-            'data': {
-                'biomarkers': biomarkers,
-                'correlation_matrix': corr_matrix.replace({float('nan'): None}).to_dict()
-            }
+            'data': result
         })
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
