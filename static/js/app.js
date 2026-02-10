@@ -209,6 +209,8 @@ const App = {
      * Handle file upload
      */
     async handleFileUpload(file) {
+        this.resetStateForNewImport();
+        
         try {
             this.resetStateForNewImport();
 
@@ -1149,35 +1151,48 @@ const App = {
      * Enable features after data load
      */
     enableFeatures() {
-        // Enable tabs
-        document.getElementById('preview-tab').disabled = false;
-        document.getElementById('distributions-tab').disabled = false;
-        document.getElementById('correlations-tab').disabled = false;
-        document.getElementById('missing-tab').disabled = false;
-        document.getElementById('compare-tab').disabled = false;
-        document.getElementById('stats-tests-tab').disabled = false;
-        document.getElementById('advanced-tab').disabled = false;
-        document.getElementById('multimodal-tab').disabled = false;
+        // Enable tabs by removing disabled from both the tab and its button
+        const tabs = [
+            'preview-tab',
+            'distributions-tab',
+            'correlations-tab',
+            'missing-tab',
+            'compare-tab',
+            'stats-tests-tab',
+            'advanced-tab',
+            'multimodal-tab'
+        ];
+        
+        tabs.forEach(tabId => {
+            const tab = document.getElementById(tabId);
+            if (tab) {
+                tab.classList.remove('disabled');
+                tab.removeAttribute('disabled');
+                
+                const button = tab.querySelector('.nav-link');
+                if (button) {
+                    button.classList.remove('disabled');
+                    button.removeAttribute('disabled');
+                    button.setAttribute('data-bs-toggle', 'tab');
+                }
+            }
+        });
 
-        document.getElementById('btnSummaryStats').disabled = false;
+        const btnSummaryStats = document.getElementById('btnSummaryStats');
+        if (btnSummaryStats) {
+            btnSummaryStats.disabled = false;
+        }
 
-
-        // Populate biomarker selects
         this.populateBiomarkerSelects();
-
-        // Populate category filter
         this.populateCategoryFilter();
-
-        // Populate advanced selects
         this.populateAdvancedSelects();
-
-        // Populate multimodal selects
         this.populateMultimodalSelects();
 
-        // Switch to preview tab
-        bootstrap.Tab.getOrCreateInstance(document.getElementById('preview-tab')).show();
+        const previewTab = document.getElementById('preview-tab');
+        if (previewTab) {
+            bootstrap.Tab.getOrCreateInstance(previewTab).show();
+        }
 
-        // Render data preview
         this.renderDataPreview();
     },
 
