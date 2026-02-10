@@ -210,6 +210,8 @@ const App = {
      */
     async handleFileUpload(file) {
         try {
+            this.resetStateForNewImport();
+
             // Show progress
             document.getElementById('uploadProgress').classList.remove('d-none');
             document.getElementById('uploadResult').classList.add('d-none');
@@ -260,6 +262,98 @@ const App = {
             Utils.showToast('Upload failed: ' + error.message, 'danger');
         }
     },
+
+    /**
+     * Reset all state for fresh import
+     */
+    resetStateForNewImport() {
+        // Destroy DataTable instance if exists
+        if (this.dataTable) {
+            try {
+                this.dataTable.destroy();
+                this.dataTable = null;
+            } catch (error) {
+                console.warn('Error destroying DataTable:', error);
+            }
+        }
+        
+        // Clear column visibility state
+        this.visibleColumns = null;
+
+        // Clear data
+        this.currentData = null;
+        this.metadata = null;
+        this.currentAnalysisContext = null;
+        
+        // Clear all result containers
+        const resultContainers = [
+            'distributionChart',
+            'correlationChart',
+            'missingDataChart',
+            'compareChart',
+            'testResultsContainer',
+            'advancedResultsContainer',
+            'multimodalResultsContainer'
+        ];
+        
+        resultContainers.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.innerHTML = '';
+            }
+        });
+        
+        // Clear LLM chat
+        const llmMessages = document.getElementById('llmMessages');
+        if (llmMessages) {
+            llmMessages.innerHTML = `
+                <div class="text-center text-muted">
+                    <i class="bi bi-robot" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Ask me about your analysis results</p>
+                </div>
+            `;
+        }
+        
+        // Hide data info panel
+        const dataInfoPanel = document.getElementById('dataInfoPanel');
+        if (dataInfoPanel) {
+            dataInfoPanel.classList.add('d-none');
+        }
+        
+        // Disable all feature tabs
+        const tabs = [
+            'explore-tab',
+            'analyze-tab', 
+            'visualize-tab',
+            'stats-tests-tab',
+            'advanced-tab',
+            'multimodal-tab'
+        ];
+        
+        tabs.forEach(tabId => {
+            const tab = document.getElementById(tabId);
+            if (tab) {
+                tab.classList.add('disabled');
+                const button = tab.querySelector('.nav-link');
+                if (button) {
+                    button.classList.remove('active');
+                    button.disabled = true;
+                }
+            }
+        });
+        
+        // Return to preview tab
+        const previewTab = document.getElementById('preview-tab');
+        if (previewTab) {
+            const button = previewTab.querySelector('.nav-link');
+            if (button) {
+                button.click();
+            }
+        }
+        
+        console.log('State reset for new import');
+    },
+
 
     /**
      * Update data info panel
@@ -1146,12 +1240,17 @@ const App = {
      */
     renderDataPreview() {
         const table = document.getElementById('dataPreviewTable');
-        const thead = table.querySelector('thead');
-        const tbody = table.querySelector('tbody');
 
         if (!this.currentData || this.currentData.length === 0) {
-            thead.innerHTML = '';
-            tbody.innerHTML = '<tr><td class="text-center py-5">No data available</td></tr>';
+            // Destroy DataTable if exists
+            if (this.dataTable) {
+                this.dataTable.destroy();
+                this.dataTable = null;
+            }
+            table.innerHTML = `
+                <thead></thead>
+                <tbody><tr><td class="text-center py-5">No data available</td></tr></tbody>
+            `;
             return;
         }
 
@@ -1162,6 +1261,26 @@ const App = {
         if (!this.visibleColumns) {
             this.visibleColumns = new Set(columns);
         }
+
+        // Destroy existing DataTable completely
+        if (this.dataTable) {
+            try {
+                this.dataTable.destroy(true);  // true = remove all events and data
+                this.dataTable = null;
+            } catch (error) {
+                console.warn('Error destroying DataTable:', error);
+            }
+        }
+
+        // Clear and rebuild table structure
+        $(table).empty();
+        table.innerHTML = `
+            <thead></thead>
+            <tbody></tbody>
+        `;
+        
+        const thead = table.querySelector('thead');
+        const tbody = table.querySelector('tbody');
 
         // Build header
         let headerHtml = '<tr>';
@@ -1186,12 +1305,7 @@ const App = {
         });
         tbody.innerHTML = bodyHtml;
 
-        // Destroy existing DataTable if any
-        if (this.dataTable) {
-            this.dataTable.destroy();
-        }
-
-        // Initialize DataTable with horizontal scroll
+        // Initialize fresh DataTable
         this.dataTable = $(table).DataTable({
             pageLength: 25,
             scrollX: true,
