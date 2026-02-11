@@ -59,29 +59,82 @@ LLM_CONFIG = {
 }
 
 # System prompt for biomarker analysis
-SYSTEM_PROMPT = """You are an expert biomarker research assistant for clinical trials. Your role is to help researchers interpret statistical results in biological and mechanistic context.
+SYSTEM_PROMPT = """
+You are a biomedical research analysis assistant specialized in biomarker interpretation
+for clinical trials and translational research.
 
-CRITICAL RULES:
-1. NEVER provide medical diagnoses or treatment recommendations
-2. ALWAYS cite specific sources when making claims using [Source: title/description]
-3. Distinguish between statistical findings and biological interpretation
-4. Use phrases like "the data suggests" not "the patient has"
-5. When uncertain, explicitly state limitations
-6. Focus on biomarker mechanisms, not clinical decisions
+You operate strictly in research context — NOT clinical care.
 
-Your expertise includes:
-- Explaining statistical results in biological context
-- Suggesting mechanistic hypotheses for observed patterns
-- Identifying relevant research and literature
-- Critiquing study design and methodology
-- Biomarker interpretation across domains (EEG, blood, HRV, etc.)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CRITICAL SAFETY CONSTRAINTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Format your responses with:
-- Clear, concise explanations
-- Citations in [Source: ...] format
-- Separate statistical vs biological interpretation
-- Confidence levels when making claims
+1. Never provide diagnosis, prognosis, disease risk assessment, or treatment recommendations.
+2. Never translate biomarker patterns into patient-level implications.
+3. Never imply clinical actionability.
+4. Frame all interpretations at the population or study level only.
+5. If the user asks for medical advice, briefly refuse and redirect to mechanistic research discussion.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EVIDENCE INTEGRITY RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Only cite sources that appear in the "RETRIEVED EVIDENCE" section.
+2. Use the exact source label provided (e.g., [Source: Smith_2021_Nature]).
+3. Do NOT invent, modify, or generalize source names.
+4. If no retrieved evidence supports a claim, explicitly state:
+   "No direct evidence found in retrieved sources."
+5. Distinguish clearly between:
+   - Statistical observation (from dataset)
+   - Evidence-supported biological interpretation
+   - Mechanistic hypothesis (explicitly labeled speculative)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STATISTICAL RIGOR RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Do NOT assume statistical significance unless p-values or test results are explicitly provided.
+2. Do NOT infer causality unless supported by study design.
+3. When only descriptive statistics are provided, interpret descriptively.
+4. Explicitly discuss sample size implications where relevant.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MANDATORY RESPONSE STRUCTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Statistical Summary
+   - Explicit numeric references
+   - Distribution characteristics
+   - Outlier analysis
+   - Avoid inference beyond provided data
+
+2. Biological Context (Evidence-Supported Only)
+   - Mechanistic pathways
+   - Molecular or physiological relevance
+   - Citations required
+
+3. Study Design Considerations
+   - Sample size limitations
+   - Measurement variability
+   - Confounders
+   - Generalizability limits
+
+4. Mechanistic Hypotheses (Clearly Labeled Speculative)
+   - Plausible biological explanations
+   - Must be explicitly marked as hypotheses
+   - Suggest what type of experiment would test them
+
+5. Limitations
+
+6. Confidence Level
+   - Low / Moderate / High
+   - Justify briefly
+
+Primary Objective:
+Generate biologically plausible, literature-grounded, testable insights
+while maintaining strict scientific conservatism.
 """
+
 
 # Allowed extensions
 ALLOWED_EXTENSIONS = {'csv', 'txt'}
@@ -200,119 +253,188 @@ def validate_response(response):
     
     return True, "OK"
 
+
 def query_with_rag(question, context=None, dataset_summary=None, column_stats=None):
-    """Query LLM with RAG context"""
+    """
+    Production-grade biomedical research analysis pipeline.
+    Two-stage reasoning.
+    Strict citation validation.
+    Maximum scientific rigor.
+    """
+
     try:
         if not OPENAI_API_KEY:
-            return {'error': 'OpenAI API key not configured'}
-        
+            return {"error": "OpenAI API key not configured"}
+
         vectorstore = None
-        
         try:
             vectorstore = load_vectorstore()
         except:
             pass
-        
-        if vectorstore is None:
-            # No RAG, use LLM only
-            retrieved_text = "No knowledge base available. Provide general guidance based on statistical principles only."
-            sources = []
-        else:
-            # Retrieve relevant documents
-            docs = vectorstore.similarity_search(question, k=LLM_CONFIG['top_k'])
-            
-            # Build retrieved context
-            retrieved_text = "\n\n".join([
-                f"[Source: {doc.metadata.get('source', 'Unknown')}]\n{doc.page_content}"
-                for doc in docs
-            ])
-            
-            sources = list(set([doc.metadata.get('source', 'Unknown') for doc in docs]))
-        
-        # Build dataset context
-        dataset_context = ""
-        if dataset_summary:
-            dataset_context = f"""
-CURRENT DATASET:
-- File: {dataset_summary.get('filename', 'Unknown')}
-- Size: {dataset_summary.get('n_rows', 0)} rows × {dataset_summary.get('n_columns', 0)} columns
-- Biomarkers: {dataset_summary.get('n_biomarkers', 0)} across {len(dataset_summary.get('biomarker_categories', {}))} categories
-- Categories: {', '.join(dataset_summary.get('biomarker_categories', {}).keys())}
-- Group columns: {', '.join(dataset_summary.get('group_columns', []))}
-- Time columns: {', '.join(dataset_summary.get('time_columns', []))}
 
-Category Details:
-"""
-            for category, info in dataset_summary.get('biomarker_categories', {}).items():
-                examples = ', '.join(info.get('biomarkers', []))
-                dataset_context += f"- {category}: {info.get('count', 0)} biomarkers (e.g., {examples})\n"
-        
-        # Build column-specific statistics context
+        # ---------------------------------------------------
+        # BUILD RETRIEVAL QUERY
+        # ---------------------------------------------------
+
+        biomarker_names = []
+        if column_stats:
+            biomarker_names = [s["column_name"] for s in column_stats]
+
+        retrieval_query = f"""
+        Biomarkers: {', '.join(biomarker_names)}
+        Research Question: {question}
+        Study Context: {context if context else ''}
+        """
+
+        retrieved_text = ""
+        sources = []
+
+        if vectorstore:
+            docs_with_scores = vectorstore.similarity_search_with_score(
+                retrieval_query,
+                k=LLM_CONFIG["top_k"]
+            )
+
+            # Filter weak matches (threshold adjustable)
+            docs_filtered = [
+                doc for doc, score in docs_with_scores if score > 0.75
+            ]
+
+            retrieved_text = "\n\n".join([
+                f"[Source: {doc.metadata.get('source','Unknown')}]\n{doc.page_content[:3000]}"
+                for doc in docs_filtered
+            ])
+
+            sources = list(set(
+                doc.metadata.get("source","Unknown")
+                for doc in docs_filtered
+            ))
+
+        if not retrieved_text:
+            retrieved_text = "No relevant literature retrieved."
+
+        # ---------------------------------------------------
+        # BUILD DATASET CONTEXT
+        # ---------------------------------------------------
+
         column_context = ""
-        if column_stats and len(column_stats) > 0:
-            column_context = "\n\nCOLUMN-SPECIFIC DATA:\n"
+        if column_stats:
+            column_context += "\nSTATISTICAL DATA PROVIDED:\n"
             for stats in column_stats:
                 column_context += f"""
 Column: {stats['column_name']}
-- Valid observations: {stats['n_valid']} (Missing: {stats['n_missing']})
-- Mean: {stats['mean']:.2f}, Median: {stats['median']:.2f}, SD: {stats['std']:.2f}
-- Range: [{stats['min']:.2f}, {stats['max']:.2f}]
-- Quartiles: Q1={stats['q25']:.2f}, Q3={stats['q75']:.2f}, IQR={stats['iqr']:.2f}
-- Outliers detected: {stats['n_outliers']} values
-- Sample values: {', '.join([f"{v:.2f}" for v in stats['sample_values'][:5]])}
+Valid N: {stats['n_valid']}
+Missing: {stats['n_missing']}
+Mean: {stats['mean']}
+Median: {stats['median']}
+SD: {stats['std']}
+Min: {stats['min']}
+Max: {stats['max']}
+Q1: {stats['q25']}
+Q3: {stats['q75']}
+IQR: {stats['iqr']}
+Outliers detected: {stats['n_outliers']}
 """
-                if stats['n_outliers'] > 0:
-                    outlier_vals = ', '.join([f'{v:.2f}' for v in stats['outlier_values'][:5]])
-                    column_context += f"- Outlier values (first 5): {outlier_vals}\n"
-        
-        # Build complete user prompt
-        user_prompt = f"""{dataset_context}{column_context}
 
-ANALYSIS CONTEXT:
-{context if context else 'No specific analysis context provided'}
+        # ---------------------------------------------------
+        # STATISTICAL FACT EXTRACTION
+        # ---------------------------------------------------
+
+        stage1_prompt = f"""
+Extract ONLY objective statistical observations from the dataset below.
+Do NOT interpret biologically.
+Do NOT infer causality.
+Return JSON with:
+- key_observations
+- distribution_characteristics
+- outlier_summary
+- sample_size_notes
+
+{column_context}
+"""
+
+        stage1_response = openai_client.chat.completions.create(
+            model=LLM_CONFIG["model"],
+            temperature=0.0,
+            max_tokens=800,
+            messages=[
+                {"role": "system", "content": "You are a statistical extraction engine."},
+                {"role": "user", "content": stage1_prompt}
+            ]
+        )
+
+        statistical_facts = stage1_response.choices[0].message.content
+
+        # ---------------------------------------------------
+        # BIOLOGICAL INTERPRETATION
+        # ---------------------------------------------------
+
+        stage2_prompt = f"""
+STATISTICAL FACTS (DO NOT MODIFY):
+{statistical_facts}
 
 RETRIEVED EVIDENCE:
 {retrieved_text}
 
-USER QUESTION:
+RESEARCH QUESTION:
 {question}
 
-When answering:
-1. Use the ACTUAL DATA from the column statistics provided above
-2. Reference specific values, means, ranges, and outliers shown in the data
-3. Provide interpretation with citations in [Source: ...] format when using external knowledge
-4. Separate statistical findings from biological interpretation
-5. State confidence level and limitations
-6. If anomalies are requested, explicitly identify them using the outlier detection results"""
-        
-        # Query OpenAI
+Use only the statistical facts provided above.
+Follow all system rules strictly.
+"""
+
         response = openai_client.chat.completions.create(
-            model=LLM_CONFIG['model'],
+            model=LLM_CONFIG["model"],
+            temperature=0.2,
+            max_tokens=LLM_CONFIG["max_tokens"],
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=LLM_CONFIG['temperature'],
-            max_tokens=LLM_CONFIG['max_tokens']
+                {"role": "user", "content": stage2_prompt}
+            ]
         )
-        
+
         answer = response.choices[0].message.content
-        
-        # Validate response
-        is_safe, message = validate_response(answer)
-        if not is_safe:
-            answer = "I cannot provide that type of medical interpretation. I can only discuss statistical patterns and biomarker mechanisms in research context."
-        
+
+        # ---------------------------------------------------
+        # CITATION VALIDATION
+        # ---------------------------------------------------
+
+        import re
+        cited = re.findall(r"\[Source: (.*?)\]", answer)
+        invalid = [c for c in cited if c not in sources]
+
+        if invalid:
+            return {
+                "error": "Invalid citation detected",
+                "invalid_sources": invalid
+            }
+
+        # ---------------------------------------------------
+        # SAFETY VALIDATION
+        # ---------------------------------------------------
+
+        if any(term in answer.lower() for term in [
+            "diagnosis",
+            "treatment",
+            "should be treated",
+            "recommend therapy",
+            "risk of developing"
+        ]):
+            return {
+                "error": "Clinical interpretation detected — blocked."
+            }
+
         return {
-            'answer': answer,
-            'sources': sources,
-            'tokens_used': response.usage.total_tokens
+            "answer": answer,
+            "sources": sources,
+            "tokens_used": response.usage.total_tokens
         }
-    
+
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return {'error': str(e)}
+        return {"error": str(e)}
+
 
 
 def get_session_id():
