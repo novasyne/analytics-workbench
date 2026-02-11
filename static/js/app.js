@@ -2837,13 +2837,17 @@ const App = {
             messages.lastChild.remove();
 
             if (result.success) {
-                this.addLLMMessage(result.answer, 'assistant');
+                // Render markdown to HTML
+                const htmlContent = marked.parse(result.answer);
+                this.addLLMMessage(htmlContent, 'assistant', true); // true = already HTML
 
                 // Show sources if available
                 if (result.sources && result.sources.length > 0) {
+                    const sourcesList = result.sources.map(s => `<code>${s}</code>`).join(', ');
                     this.addLLMMessage(
-                        `Sources: ${result.sources.join(', ')}`,
-                        'sources'
+                        `<strong>Sources:</strong> ${sourcesList}`,
+                        'sources',
+                        true // true = already HTML
                     );
                 }
             } else {
@@ -2857,32 +2861,73 @@ const App = {
     /**
      * Add message to chat
      */
-    addLLMMessage(text, type, isTyping = false) {
-        const messages = document.getElementById('llmMessages');
-        const message = document.createElement('div');
-        message.className = `mb-3 ${type === 'user' ? 'text-end' : ''}`;
-
-        let bgClass = 'bg-primary';
-        let textClass = 'text-white';
-
-        if (type === 'assistant') {
-            bgClass = 'y';
-        } else if (type === 'error') {
-            bgClass = 'bg-danger';
-        } else if (type === 'sources') {
-            bgClass = 'bg-dark';
-            textClass = 'text-muted';
+    addLLMMessage(content, type, isHtml = false) {
+        const messagesDiv = document.getElementById('llmMessages');
+        
+        // Clear welcome message if present
+        if (messagesDiv.querySelector('.text-center')) {
+            messagesDiv.innerHTML = '';
         }
+        
+        let iconClass, header, bgClass;
+        
+        switch(type) {
+            case 'user':
+                iconClass = 'bi-person-fill';
+                header = 'You';
+                bgClass = 'user';
+                break;
+            case 'assistant':
+                iconClass = 'bi-robot';
+                header = 'AI Assistant';
+                bgClass = 'assistant';
+                break;
+            case 'sources':
+                iconClass = 'bi-database';
+                header = 'Sources';
+                bgClass = 'assistant';
+                break;
+            case 'error':
+                iconClass = 'bi-exclamation-triangle';
+                header = 'Error';
+                bgClass = 'assistant';
+                break;
+            default:
+                iconClass = 'bi-chat-dots';
+                header = 'System';
+                bgClass = 'assistant';
+        }
+        
+        // For user messages, escape HTML to prevent XSS
+        // For assistant messages with markdown, use as-is
+        const displayContent = (type === 'user' && !isHtml) 
+            ? this.escapeHtml(content) 
+            : content;
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${bgClass}`;
+        messageDiv.innerHTML = `
+            <div class="message-header">
+                <i class="${iconClass} me-1"></i> ${header}
+            </div>
+            <div class="message-content ${type === 'error' ? 'text-danger' : ''}">
+                ${displayContent}
+            </div>
+        `;
+        
+        messagesDiv.appendChild(messageDiv);
+        
+        // Scroll to bottom
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    },
 
-        message.innerHTML = `
-        <div class="d-inline-block p-2 rounded ${bgClass} ${textClass}" style="max-width: 85%;">
-            ${isTyping ? '<span class="spinner-border spinner-border-sm me-2"></span>' : ''}
-            ${text.replace(/\n/g, '<br>')}
-        </div>
-    `;
-
-        messages.appendChild(message);
-        messages.scrollTop = messages.scrollHeight;
+    /**
+     * Escape HTML to prevent XSS
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     },
 
     /**
