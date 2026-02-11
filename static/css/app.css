@@ -559,3 +559,120 @@ nav.sidebar .btn:disabled {
         display: none !important;
     }
 }
+
+/* LLM Message Markdown Styling */
+#llmMessages .message {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+}
+
+#llmMessages .message.user {
+    background-color: #2c3e50;
+    margin-left: 2rem;
+}
+
+#llmMessages .message.assistant {
+    background-color: #1a1a1a;
+    margin-right: 2rem;
+    border-left: 3px solid #007bff;
+}
+
+#llmMessages .message-header {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: #6c757d;
+    font-size: 0.85rem;
+}
+
+#llmMessages .message-content {
+    color: #e9ecef;
+    line-height: 1.6;
+}
+
+/* Markdown element styling inside messages */
+#llmMessages .message-content p {
+    margin-bottom: 0.75rem;
+}
+
+#llmMessages .message-content p:last-child {
+    margin-bottom: 0;
+}
+
+#llmMessages .message-content code {
+    background-color: #2d2d2d;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #f8f9fa;
+}
+
+#llmMessages .message-content pre {
+    background-color: #2d2d2d;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 0.75rem 0;
+}
+
+#llmMessages .message-content pre code {
+    background-color: transparent;
+    padding: 0;
+}
+
+#llmMessages .message-content ul,
+#llmMessages .message-content ol {
+    margin-left: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+#llmMessages .message-content li {
+    margin-bottom: 0.25rem;
+}
+
+#llmMessages .message-content blockquote {
+    border-left: 3px solid #6c757d;
+    padding-left: 1rem;
+    margin: 0.75rem 0;
+    color: #adb5bd;
+}
+
+#llmMessages .message-content h1,
+#llmMessages .message-content h2,
+#llmMessages .message-content h3,
+#llmMessages .message-content h4 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: #f8f9fa;
+}
+
+#llmMessages .message-content strong {
+    color: #fff;
+}
+
+#llmMessages .message-content a {
+    color: #4dabf7;
+    text-decoration: none;
+}
+
+#llmMessages .message-content a:hover {
+    text-decoration: underline;
+}
+
+#llmMessages .message-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.75rem 0;
+}
+
+#llmMessages .message-content table th,
+#llmMessages .message-content table td {
+    border: 1px solid #495057;
+    padding: 0.5rem;
+}
+
+#llmMessages .message-content table th {
+    background-color: #2d2d2d;
+    font-weight: bold;
+}
