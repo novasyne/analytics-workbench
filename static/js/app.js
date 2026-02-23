@@ -2128,27 +2128,6 @@ const App = {
         `;
         });
 
-        html += `
-                        </tbody>
-                    </table>
-                </div>
-                
-                <!-- EXPLAIN BUTTON -->
-                <button class="btn btn-sm btn-outline-primary mt-3" 
-                    onclick="App.explainResult('cross_domain_network', {
-                        n_connections: ${data.n_connections},
-                        n_cross_domain: ${data.n_cross_domain},
-                        n_nodes: ${data.nodes.length},
-                        domains: '${domainList}',
-                        min_correlation: ${data.min_correlation},
-                        n_domain_pairs: ${data.domain_pairs.length}
-                    })">
-                    <i class="bi bi-lightbulb me-1"></i>Explain these patterns
-                </button>
-            </div>
-        </div>
-    `;
-
         container.innerHTML = html;
 
         // Draw D3 network graph
@@ -2981,13 +2960,11 @@ const App = {
      * Build dataset summary for LLM context
      */
     buildDatasetSummary() {
-
         if (!this.metadata || !this.metadata.structure) {
             return null;
         }
 
         const structure = this.metadata.structure;
-
 
         // Build category summary
         const categorySummary = {};
@@ -3004,9 +2981,12 @@ const App = {
 
         // Try different possible key names for row/column counts
         const rowCount = structure.n_rows || structure.rows || structure.num_rows ||
-            structure.row_count || this.metadata.n_rows || 0;
+            structure.row_count || this.metadata.rows || 0;
         const colCount = structure.n_columns || structure.columns || structure.num_columns ||
-            structure.column_count || this.metadata.n_columns || 0;
+            structure.column_count || this.metadata.columns || 0;
+
+        // Add sample data statistics
+        const sampleStats = this.calculateSampleStatistics();
 
         const summary = {
             filename: this.metadata.filename || 'Unknown',
@@ -3016,14 +2996,65 @@ const App = {
             group_columns: structure.group_columns || [],
             time_columns: structure.time_columns || [],
             n_biomarkers: (structure.biomarker_columns || []).length,
-            n_demographics: (structure.demographic_columns || []).length
+            n_demographics: (structure.demographic_columns || []).length,
+            sample_statistics: sampleStats  // **NEW: Add sample stats**
         };
-
 
         return summary;
     },
 
+    /**
+     * Calculate sample statistics from current data preview
+     */
+    calculateSampleStatistics() {
+        if (!this.currentData || this.currentData.length === 0) {
+            return null;
+        }
 
+        const stats = {
+            sample_size: this.currentData.length,
+            columns_with_data: {}
+        };
+
+        // Get first row to determine column types
+        const firstRow = this.currentData[0];
+        const columns = Object.keys(firstRow);
+
+        // Calculate basic stats for up to 10 numeric columns
+        let numericColumnsProcessed = 0;
+        const maxColumnsToProcess = 10;
+
+        for (const col of columns) {
+            if (numericColumnsProcessed >= maxColumnsToProcess) break;
+
+            // Extract values for this column
+            const values = this.currentData
+                .map(row => row[col])
+                .filter(val => val !== null && val !== undefined && val !== '' && !isNaN(val))
+                .map(val => parseFloat(val));
+
+            // If we have numeric values, calculate stats
+            if (values.length > 0) {
+                const sorted = values.slice().sort((a, b) => a - b);
+                const sum = values.reduce((acc, val) => acc + val, 0);
+                const mean = sum / values.length;
+                
+                stats.columns_with_data[col] = {
+                    n_valid: values.length,
+                    n_total: this.currentData.length,
+                    coverage_percent: ((values.length / this.currentData.length) * 100).toFixed(1),
+                    mean: mean.toFixed(2),
+                    min: sorted[0].toFixed(2),
+                    max: sorted[sorted.length - 1].toFixed(2),
+                    median: sorted[Math.floor(sorted.length / 2)].toFixed(2)
+                };
+                
+                numericColumnsProcessed++;
+            }
+        }
+
+        return stats;
+    },
 
     /**
      * Show knowledge alert
