@@ -260,6 +260,7 @@ def query_with_rag(question, context=None, dataset_summary=None, column_stats=No
     Two-stage reasoning.
     Strict citation validation.
     Maximum scientific rigor.
+    Enhanced with dataset summary statistics.
     """
 
     try:
@@ -314,51 +315,78 @@ def query_with_rag(question, context=None, dataset_summary=None, column_stats=No
             retrieved_text = "No relevant literature retrieved."
 
         # ---------------------------------------------------
-        # BUILD DATASET CONTEXT
+        # BUILD DATASET CONTEXT - ENHANCED
         # ---------------------------------------------------
 
+        dataset_context = ""
+        if dataset_summary:
+            dataset_context = f"""
+DATASET INFORMATION:
+File: {dataset_summary.get('filename', 'Unknown')}
+Total Size: {dataset_summary.get('n_rows', 0)} rows × {dataset_summary.get('n_columns', 0)} columns
+Biomarkers: {dataset_summary.get('n_biomarkers', 0)} total
+Categories: {', '.join(dataset_summary.get('biomarker_categories', {}).keys())}
+Group Columns: {', '.join(dataset_summary.get('group_columns', [])) if dataset_summary.get('group_columns') else 'None'}
+Time Columns: {', '.join(dataset_summary.get('time_columns', [])) if dataset_summary.get('time_columns') else 'None'}
+"""
+
+            # Add sample statistics from data preview**
+            sample_stats = dataset_summary.get('sample_statistics')
+            if sample_stats and sample_stats.get('columns_with_data'):
+                dataset_context += f"\nSAMPLE DATA PREVIEW (first {sample_stats.get('sample_size', 0)} rows):\n"
+                for col_name, col_stats in list(sample_stats['columns_with_data'].items())[:10]:
+                    dataset_context += f"""
+{col_name}:
+  - Valid: {col_stats['n_valid']}/{col_stats['n_total']} observations ({col_stats['coverage_percent']}% coverage)
+  - Range: [{col_stats['min']}, {col_stats['max']}]
+  - Mean: {col_stats['mean']}, Median: {col_stats['median']}
+"""
+        
+        # Build column-specific statistics context
         column_context = ""
         if column_stats:
-            column_context += "\nSTATISTICAL DATA PROVIDED:\n"
+            column_context += "\n\nDETAILED COLUMN STATISTICS (complete dataset):\n"
             for stats in column_stats:
                 column_context += f"""
 Column: {stats['column_name']}
-Valid N: {stats['n_valid']}
-Missing: {stats['n_missing']}
-Mean: {stats['mean']}
-Median: {stats['median']}
-SD: {stats['std']}
-Min: {stats['min']}
-Max: {stats['max']}
-Q1: {stats['q25']}
-Q3: {stats['q75']}
-IQR: {stats['iqr']}
-Outliers detected: {stats['n_outliers']}
+  - Total observations: {stats['n_total']}
+  - Valid: {stats['n_valid']} | Missing: {stats['n_missing']}
+  - Mean: {stats['mean']:.2f}, Median: {stats['median']:.2f}
+  - SD: {stats['std']:.2f}
+  - Range: [{stats['min']:.2f}, {stats['max']:.2f}]
+  - Quartiles: Q1={stats['q25']:.2f}, Q3={stats['q75']:.2f}, IQR={stats['iqr']:.2f}
+  - Outliers detected: {stats['n_outliers']} values
 """
+                if stats['n_outliers'] > 0 and stats.get('outlier_values'):
+                    outlier_preview = ', '.join([f"{v:.2f}" for v in stats['outlier_values'][:5]])
+                    column_context += f"  - Outlier examples (first 5): {outlier_preview}\n"
 
         # ---------------------------------------------------
         # STATISTICAL FACT EXTRACTION
         # ---------------------------------------------------
 
         stage1_prompt = f"""
-Extract ONLY objective statistical observations from the dataset below.
+Extract ONLY objective statistical observations from the data below.
 Do NOT interpret biologically.
 Do NOT infer causality.
-Return JSON with:
-- key_observations
-- distribution_characteristics
-- outlier_summary
-- sample_size_notes
 
+Use BOTH the sample preview AND detailed column statistics to provide accurate numerical facts.
+
+Return structured response with:
+- Statistical Summary (using actual numbers from the data)
+- Distribution Characteristics (means, medians, ranges, outliers)
+- Sample Size Notes (coverage percentages, missing data patterns)
+
+{dataset_context}
 {column_context}
 """
 
         stage1_response = openai_client.chat.completions.create(
             model=LLM_CONFIG["model"],
             temperature=0.0,
-            max_tokens=800,
+            max_tokens=1000,
             messages=[
-                {"role": "system", "content": "You are a statistical extraction engine."},
+                {"role": "system", "content": "You are a statistical extraction engine. Report only objective numerical facts from the provided data."},
                 {"role": "user", "content": stage1_prompt}
             ]
         )
@@ -370,7 +398,7 @@ Return JSON with:
         # ---------------------------------------------------
 
         stage2_prompt = f"""
-STATISTICAL FACTS (DO NOT MODIFY):
+STATISTICAL FACTS (use these exact numbers):
 {statistical_facts}
 
 RETRIEVED EVIDENCE:
@@ -378,6 +406,14 @@ RETRIEVED EVIDENCE:
 
 RESEARCH QUESTION:
 {question}
+
+INSTRUCTIONS:
+1. Base your response on the ACTUAL statistical facts provided above
+2. Reference specific numeric values, means, ranges, and outliers from the data
+3. Cite sources using [Source: ...] format for biological interpretations
+4. Clearly separate statistical findings from biological interpretation
+5. Acknowledge data limitations (missing values, sample size, coverage)
+6. State confidence level based on data quality
 
 Use only the statistical facts provided above.
 Follow all system rules strictly.
@@ -434,7 +470,6 @@ Follow all system rules strictly.
         import traceback
         traceback.print_exc()
         return {"error": str(e)}
-
 
 
 def get_session_id():
@@ -1485,15 +1520,29 @@ def run_pca():
         if not variables:
             variables = metadata['structure']['biomarker_columns']
         
-        # Prepare data
-        X = df[variables].dropna()
-        
-        if len(X) < n_components:
-            return jsonify({'error': 'Insufficient data for PCA'}), 400
-        
+        X = df[variables]
+
+        # Filter to numeric columns only
+        numeric_columns = X.select_dtypes(include=[np.number]).columns.tolist()
+
+        if not numeric_columns:
+            return jsonify({'error': 'No numeric columns found in selected variables'}), 400
+
+        if len(numeric_columns) < n_components:
+            return jsonify({'error': f'Need at least {n_components} numeric variables. Found {len(numeric_columns)}.'}), 400
+
+        # Use only numeric columns
+        X_numeric = X[numeric_columns].dropna()
+
+        if len(X_numeric) < n_components:
+            return jsonify({'error': f'Insufficient data after removing missing values. Need at least {n_components} observations, got {len(X_numeric)}.'}), 400
+
+        # Update variables list to only include numeric columns used
+        variables = numeric_columns
+
         # Standardize
         scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
+        X_scaled = scaler.fit_transform(X_numeric)
         
         # Run PCA
         pca = PCA(n_components=n_components)
@@ -2292,7 +2341,7 @@ def llm_query_endpoint():
         question = data.get('question')
         context = data.get('context', None)
         dataset_summary = data.get('dataset_summary', None)
-        column_stats = data.get('column_stats', [])  # NEW
+        column_stats = data.get('column_stats', [])
 
         if not question:
             return jsonify({'error': 'Question is required'}), 400
